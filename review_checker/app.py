@@ -3,31 +3,28 @@
 import streamlit as st
 from transformers import pipeline
 
-# Load LLM pipeline
-classifier = pipeline("sentiment-analysis")
+# Load sentiment analysis pipeline
+sentiment_pipeline = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-def check_review(text):
-    result = classifier(text)[0]
-    label = result['label']
-    score = result['score']
+st.set_page_config(page_title="Review Checker", layout="centered")
+st.title("📋 Review Authenticity Checker")
 
-    if label == "NEGATIVE" and score > 0.9:
-        return "⚠️ Likely FAKE or Manipulated Review", score
-    elif label == "POSITIVE" and score < 0.6:
-        return "⚠️ Possibly Overly Polished – Needs Review", score
+review = st.text_area("Paste a Product Review:")
+
+if st.button("Analyze"):
+    if not review.strip():
+        st.warning("Please enter a review.")
     else:
-        return "✅ Review seems Legit", score
+        result = sentiment_pipeline(review)[0]
+        label = result["label"]
+        score = result["score"]
 
-# Streamlit UI
-st.title("🕵️ Review Authenticity Checker")
-st.markdown("Paste a review below to check if it's genuine or suspicious.")
-
-user_input = st.text_area("✍️ Enter review text:", height=150)
-
-if st.button("🔍 Check Review"):
-    if user_input.strip() == "":
-        st.warning("Please enter a review to analyze.")
-    else:
-        verdict, confidence = check_review(user_input)
-        st.subheader(verdict)
-        st.write(f"**Model confidence**: {confidence:.2f}")
+        # 🌡️ Confidence threshold
+        if score < 0.85:
+            st.warning("⚠️ Confidence is low. Redirecting to human review panel.")
+            st.markdown("🔗 [Open Reviewer Panel](reviewer_panel.py)")
+        else:
+            if label == "POSITIVE":
+                st.success(f"✅ Review seems Legit (Confidence: {score:.2f})")
+            else:
+                st.error(f"⚠️ Likely FAKE or Manipulated Review (Confidence: {score:.2f})")
